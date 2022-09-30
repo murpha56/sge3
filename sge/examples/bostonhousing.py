@@ -1,7 +1,9 @@
 import random
 from sge.parameters import params
 from sge.utilities.protected_math import _log_, _div_, _exp_, _inv_, _sqrt_, protdiv
-from numpy import cos, sin
+from numpy import cos, sin, corrcoef, isnan
+from sklearn.model_selection import train_test_split
+from scipy import stats
 
 def drange(start, stop, step):
     r = start
@@ -27,6 +29,8 @@ class BostonHousing():
         with open('resources/BostonHousing/housing.data', 'r') as dataset_file:
             for line in dataset_file:
                 dataset.append([float(value.strip(" ")) for value in line.split(" ") if value != ""])
+
+
 
         with open('resources/BostonHousing/housing.folds', 'r') as folds_file:
             for _ in range(self.run - 1): folds_file.readline()
@@ -60,6 +64,45 @@ class BostonHousing():
                 return self.__invalid_fitness
         return pred_error
 
+    def get_test_error(self, individual, dataset, slope, intercept):
+        pred_error = 0
+        for case in dataset:
+            target = case[-1]
+            try:
+                output = eval(individual, globals(), {"x": case[:-1]})
+                scaled_output = intercept + slope*output
+                pred_error += (target - scaled_output)**2
+            except (SyntaxError, ValueError, OverflowError, MemoryError, FloatingPointError):
+                return self.__invalid_fitness
+        return pred_error
+
+    def get_corr_error(self, individual, dataset):
+        corr_error = 0
+        slope = 0
+        intercept = 0
+        outputs = []
+        targets = []
+        for case in dataset:
+            target = case[-1]
+            try:
+                output = eval(individual, globals(), {"x": case[:-1]})
+                outputs.append(output)
+                targets.append(target)
+            except (SyntaxError, ValueError, OverflowError, MemoryError, FloatingPointError):
+                return self.__invalid_fitness, 0, 0
+
+        corr_matrix = corrcoef(targets, outputs)
+        try:
+            corr_error = 1 - (corr_matrix[0,1]**2)
+            if isnan(corr_error):
+                corr_error = 1
+        except (SyntaxError, ValueError, OverflowError, MemoryError, FloatingPointError):
+            return self.__invalid_fitness, 0, 0
+
+        slope, intercept, r_value, p_value, std_err = stats.linregress(targets, outputs)
+
+        return corr_error, slope, intercept
+
 
     def evaluate(self, individual):
         error = 0.0
@@ -67,16 +110,23 @@ class BostonHousing():
         if individual is None:
             return None
 
-        error = self.get_error(individual, self.__train_set)
-        error = _sqrt_( error /self.__RRSE_train_denominator)
+        if params['ERROR_METRIC'] == "Correleation":
+            error, slope, intercept = self.get_corr_error(individual, self.__train_set)
+        else:
+            error = self.get_error(individual, self.__train_set)
+            error = _sqrt_( error /self.__RRSE_train_denominator)
 
         if error is None:
             error = self.__invalid_fitness
-            
+
 
         if self.__test_set is not None:
             test_error = 0
-            test_error = self.get_error(individual, self.__test_set)
+            if params['ERROR_METRIC'] == "Correleation":
+                test_error = self.get_test_error(individual, self.__test_set, slope, intercept)
+            else:
+                test_error = self.get_error(individual, self.__test_set)
+
             test_error = _sqrt_( test_error / float(self.__RRSE_test_denominator))
 
         return error, {'generation': 0, "evals": 1, "test_error": test_error}
@@ -86,4 +136,4 @@ if __name__ == "__main__":
     import sge
     sge.setup("parameters/standard.yml")
     eval_func = BostonHousing(params['RUN'])
-    sge.evolutionary_algorithm(evaluation_function=eval_func, parameters_file="parameters/standard.yml")
+    sge.evolutionary_algorithm(evaluation_function=eval_func)

@@ -12,8 +12,12 @@ params = {'PARAMETERS': None,
           'SEED': None,
           'PROB_CROSSOVER': 0.9,
           'PROB_MUTATION': 0.1,
+          'MUTATION_STRATEGY': "Regular",
+          'CROSSOVER_STRATEGY': "Regular",
+          'PROB_CONTEXT': 0.2,
+          'SELECTION_STRATEGY': "Tournamnet",
           'TSIZE': 3,
-          'GRAMMAR': 'grammars/regression.pybnf',
+          'GRAMMAR': 'grammars/regression.txt',
           'EXPERIMENT_NAME': "dumps/Test",
           'RUN': 1,
           'INCLUDE_GENOTYPE': True,
@@ -21,6 +25,8 @@ params = {'PARAMETERS': None,
           'VERBOSE': True,
           'MIN_TREE_DEPTH': 6,
           'MAX_TREE_DEPTH': 17,
+          'ERROR_METRIC': "RMSE",
+          'PROBLEM': "AusCredit"
           }
 
 
@@ -57,15 +63,32 @@ def set_parameters(arguments):
     parser.add_argument('--seed',
                         dest='SEED',
                         type=float,
-                        help='Specifies the seed to be used by the random number generator.')
+                        help='Specifies the seed to be used by the random number generator. If no Seed is given it '
+                             'will be initialized as: int(datetime.now().microsecond)')
     parser.add_argument('--prob_crossover',
                         dest='PROB_CROSSOVER',
                         type=float,
-                        help='Specifies the probability of crossover usage. Float required')
+                        help='Specifies the probability of crossover usage. Float required.')
     parser.add_argument('--prob_mutation',
                         dest='PROB_MUTATION',
                         type=float,
-                        help='Specifies the probability of mutation usage. Float required')
+                        help='Specifies the probability of mutation usage. Float required.')
+    parser.add_argument('--mutation_strategy',
+                        dest='MUTATION_STRATEGY',
+                        type=str,
+                        help='Specifies the mutation strategy used. String required.')
+    parser.add_argument('--crossover_strategy',
+                        dest='CROSSOVER_STRATEGY',
+                        type=str,
+                        help='Specifies the crossover strategy used. String required.')
+    parser.add_argument('--prob_context',
+                        dest='PROB_CONTEXT',
+                        type=float,
+                        help='Specifies the context aware crossover probabilty. Float required')
+    parser.add_argument('--selection_strategy',
+                        dest='SELECTION_STRATEGY',
+                        type=str,
+                        help='Specifies the selection strategy used. String required.')
     parser.add_argument('--tsize',
                         dest='TSIZE',
                         type=int,
@@ -89,11 +112,19 @@ def set_parameters(arguments):
     parser.add_argument('--save_step',
                         dest='SAVE_STEP',
                         type=int,
-                        help='Specifies how often stats are saved')
+                        help='Specifies how often stats are saved.')
     parser.add_argument('--verbose',
                         dest='VERBOSE',
                         type=bool,
-                        help='Turns on the verbose output of the program')
+                        help='Turns on the verbose output of the program.')
+    parser.add_argument('--error_metric',
+                        dest='ERROR_METRIC',
+                        type=str,
+                        help='Specifies the fitness fuction to be used.')
+    parser.add_argument('--problem',
+                        dest='PROBLEM',
+                        type=str,
+                        help='Specifies the problem.')
 
     # Parse command line arguments using all above information.
     args, _ = parser.parse_known_args(arguments)
@@ -112,4 +143,3 @@ def set_parameters(arguments):
     if 'PARAMETERS' in cmd_args:
         load_parameters(cmd_args['PARAMETERS'])
     params.update(cmd_args)
-

@@ -4,9 +4,9 @@ import sge.grammar as grammar
 import sge.logger as logger
 from datetime import datetime
 from tqdm import tqdm
-from sge.operators.recombination import crossover
-from sge.operators.mutation import mutate
-from sge.operators.selection import tournament
+from sge.operators.recombination import crossover, context_aware_crossover, single_point_crossover
+from sge.operators.mutation import mutate, shrinkmutate
+from sge.operators.selection import tournament, doubletournamentsmall, doubletournamentlarge, samesizeind, roulette_wheel_selection
 from sge.parameters import (
     params,
     set_parameters,
@@ -50,12 +50,12 @@ def setup(parameters_file_path = None):
     grammar.set_min_init_tree_depth(params['MIN_TREE_DEPTH'])
 
 
-def evolutionary_algorithm(evaluation_function=None, parameters_file=None):
-    setup(parameters_file_path=parameters_file)
+def evolutionary_algorithm(evaluation_function=None):
+    setup()
     population = list(make_initial_population())
     it = 0
     while it <= params['GENERATIONS']:
-        for i in tqdm(population):
+        for i in population:
             if i['fitness'] is None:
                 evaluate(i, evaluation_function)
         population.sort(key=lambda x: x['fitness'])
@@ -64,13 +64,40 @@ def evolutionary_algorithm(evaluation_function=None, parameters_file=None):
         new_population = population[:params['ELITISM']]
         while len(new_population) < params['POPSIZE']:
             if random.random() < params['PROB_CROSSOVER']:
-                p1 = tournament(population, params['TSIZE'])
-                p2 = tournament(population, params['TSIZE'])
-                ni = crossover(p1, p2)
+                if params['SELECTION_STRATEGY'] == "RouletteWheel":
+                    p1 = roulette_wheel_selection(population)
+                    p2 = roulette_wheel_selection(population)
+                elif params['SELECTION_STRATEGY'] == "SameSizeTournamnet":
+                    p1 = tournament(population, params['TSIZE'])
+                    p2 = samesizeind(population, params['TSIZE'], p1)
+                elif params['SELECTION_STRATEGY'] == "DoubleTournamnet":
+                    if random.random() < params['PROB_CROSSOVER']/2:
+                        p1 = doubletournamentsmall(population, params['TSIZE'])
+                        p2 = doubletournamentsmall(population, params['TSIZE'])
+                    else:
+                        p1 = doubletournamentlarge(population, params['TSIZE'])
+                        p2 = doubletournamentlarge(population, params['TSIZE'])
+                else:
+                    p1 = tournament(population, params['TSIZE'])
+                    p2 = tournament(population, params['TSIZE'])
+
+                if params['CROSSOVER_STRATEGY'] == "SinglePoint":
+                    ni = single_point_crossover(p1, p2)
+                elif params['CROSSOVER_STRATEGY'] == "ContextAware":
+                    ni = context_aware_crossover(p1, p2, params['PROB_CONTEXT'])
+                else:
+                    ni = crossover(p1, p2)
+
             else:
                 ni = tournament(population, params['TSIZE'])
-            ni = mutate(ni, params['PROB_MUTATION'])
+
+            if params['MUTATION_STRATEGY'] == "Shrink":
+                ni = shrinkmutate(ni, params['PROB_MUTATION'], it, params['GENERATIONS'])
+            elif params['MUTATION_STRATEGY'] == "Alt":
+                ni = mutateAlt(ni, params['PROB_MUTATION'])
+            else:
+                ni = mutate(ni, params['PROB_MUTATION'])
+
             new_population.append(ni)
         population = new_population
         it += 1
-

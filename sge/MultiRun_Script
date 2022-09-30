@@ -1,0 +1,12 @@
+#!/bin/bash
+
+
+nor=50		# number of runs
+
+
+# Uncomment/modify appropriate lines in the code below as per your requirement
+for (( run=1 ; run<nor+1 ; run=${run}+1 )) do
+		nohup python3 -m progsys.progsys --run $run --parameters parameters/fpt_standard.yml  &
+	fi
+
+done

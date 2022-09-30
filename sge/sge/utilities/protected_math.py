@@ -32,6 +32,28 @@ def _sqrt_(x):
     return sqrt(abs(x))
 
 
+
+#Fuzzy GE operators
+
+def root(a1, a2):
+    return a1, a2
+
+def WA(k, a1, a2):
+    return k*a1 + (1-k)*a2
+
+def OWA(k, a1, a2):
+    return k*max(a1,a2) + (1-k)*min(a1,a2)
+
+def concentrate(x):
+  return x*x
+
+def dilation(x):
+  return sqrt(x)
+
+def complement(x):
+  return 1-x
+
+
 class Infix:
     def __init__(self, function):
         self.function = function
