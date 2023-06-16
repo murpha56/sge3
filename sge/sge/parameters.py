@@ -10,6 +10,7 @@ params = {'PARAMETERS': None,
           'GENERATIONS': 10,
           'ELITISM': 10,                    # number of individuals that survive
           'SEED': None,
+          'INITIALISATION': "sensible",
           'PROB_CROSSOVER': 0.9,
           'PROB_MUTATION': 0.1,
           'MUTATION_STRATEGY': "Regular",
@@ -17,7 +18,7 @@ params = {'PARAMETERS': None,
           'PROB_CONTEXT': 0.2,
           'SELECTION_STRATEGY': "Tournamnet",
           'TSIZE': 3,
-          'GRAMMAR': 'grammars/regression.txt',
+          'GRAMMAR': "grammars/regression.txt",
           'EXPERIMENT_NAME': "dumps/Test",
           'RUN': 1,
           'INCLUDE_GENOTYPE': True,
@@ -65,6 +66,10 @@ def set_parameters(arguments):
                         type=float,
                         help='Specifies the seed to be used by the random number generator. If no Seed is given it '
                              'will be initialized as: int(datetime.now().microsecond)')
+    parser.add_argument('--initialisation',
+                        dest='INITIALISATION',
+                        type=str,
+                        help='Specifies the initialisation procedure to be used.')
     parser.add_argument('--prob_crossover',
                         dest='PROB_CROSSOVER',
                         type=float,
@@ -117,6 +122,14 @@ def set_parameters(arguments):
                         dest='VERBOSE',
                         type=bool,
                         help='Turns on the verbose output of the program.')
+    parser.add_argument('--min_tree_depth',
+                        dest='MIN_TREE_DEPTH',
+                        type=int,
+                        help='Specifies minimum tree depth for initialisation.')
+    parser.add_argument('--max_tree_depth',
+                        dest='MAX_TREE_DEPTH',
+                        type=int,
+                        help='Specifies max_init_depthimum tree depth for initialisation.')
     parser.add_argument('--error_metric',
                         dest='ERROR_METRIC',
                         type=str,

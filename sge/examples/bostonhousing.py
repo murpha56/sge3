@@ -127,13 +127,13 @@ class BostonHousing():
             else:
                 test_error = self.get_error(individual, self.__test_set)
 
-            test_error = _sqrt_( test_error / float(self.__RRSE_test_denominator))
+            #test_error = _sqrt_( test_error / float(self.__RRSE_test_denominator))
 
-        return error, {'generation': 0, "evals": 1, "test_error": test_error}
+        return error, test_error, {'generation': 0, "evals": 1, "test_error": test_error}
 
 
 if __name__ == "__main__":
     import sge
-    sge.setup("parameters/standard.yml")
+    sge.setup("parameters/bostonhousing.yml")
     eval_func = BostonHousing(params['RUN'])
     sge.evolutionary_algorithm(evaluation_function=eval_func)

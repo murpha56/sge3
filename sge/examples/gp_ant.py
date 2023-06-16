@@ -45,6 +45,8 @@ fitness = (89,)
 
 import copy
 from functools import partial
+from sge.parameters import params
+import random
 
 def dummy():
     return
@@ -78,12 +80,16 @@ def if_then_else(condition, out1, *targs):
             out()
 
 
-class AntSimulator:
+class AntSimulator():
+
+    def __init__(self, run=0):
+        self.run = run
+
     direction = ["north", "east", "south", "west"]
     dir_row = [1, 0, -1, 0]
     dir_col = [0, 1, 0, -1]
 
-    def __init__(self, max_moves=400, trail="sft"):
+    def __init__(self, max_moves=400, trail="los"):
         self.max_moves = max_moves
         self.moves = 0
         self.eaten = 0
@@ -151,7 +157,7 @@ class AntSimulator:
 
     def runstring(self,routine,callable_ = False):
         self._reset()
-        while self.moves < self.max_moves and self.eaten != 89:
+        while self.moves < self.max_moves and self.eaten != 157:
             last = self.moves
             try:
                 if callable_:
@@ -169,9 +175,9 @@ class AntSimulator:
 
     def evaluate(self, individual):
         if individual is None:
-            return 1000, {'generation':0,"moves_needed" : self.max_moves, "evals" : 1, "test_error" : 0}
+            return 1000, 1000, {'generation':0,"moves_needed" : self.max_moves, "evals" : 1, "test_error" : 0}
         self.runstring(individual, False)
-        return self.total_pieces-self.eaten, {'generation': 0, "moves_needed": self.moves, "evals": 1, "test_error"
+        return self.total_pieces-self.eaten, self.total_pieces-self.eaten, {'generation': 0, "moves_needed": self.moves, "evals": 1, "test_error"
         : 0}
 
     def parse_matrix(self, matrix):
@@ -199,5 +205,6 @@ class AntSimulator:
 
 if __name__ == "__main__":
     import sge
-    eval_func = AntSimulator(650)
-    sge.evolutionary_algorithm(evaluation_function=eval_func, parameters_file="parameters/standard_gp_ant.yml")
+    sge.setup("parameters/standard_gp_ant.yml")
+    eval_func = AntSimulator(650, params['RUN'])
+    sge.evolutionary_algorithm(evaluation_function=eval_func)

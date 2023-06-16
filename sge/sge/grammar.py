@@ -1,6 +1,7 @@
 import re
 import random
 from sge.utilities import ordered_set
+from collections import Counter
 
 
 class Grammar:
@@ -20,8 +21,8 @@ class Grammar:
         self.non_recursive_options = {}
         self.number_of_options_by_non_terminal = None
         self.start_rule = None
-        self.max_depth = None
         self.max_init_depth = None
+        self.min_init_depth = None
 
     def set_path(self, grammar_path):
         self.grammar_file = grammar_path
@@ -30,13 +31,13 @@ class Grammar:
         return self.non_recursive_options
 
     def set_min_init_tree_depth(self, min_tree_depth):
-        self.max_init_depth = min_tree_depth
+        self.min_init_depth = min_tree_depth
 
     def set_max_tree_depth(self, max_tree_depth):
-        self.max_depth = max_tree_depth
+        self.max_init_depth = max_tree_depth
 
     def get_max_depth(self):
-        return self.max_depth
+        return self.max_init_depth
 
     def read_grammar(self):
         """
@@ -109,16 +110,27 @@ class Grammar:
                 non_recursive_elements += [options]
         return non_recursive_elements
 
-    def recursive_individual_creation(self, genome, symbol, current_depth):
-        if current_depth > self.max_init_depth:
-            possibilities = []
-            for index, option in enumerate(self.grammar[symbol]):
-                for s in option:
-                    if s[0] == symbol:
-                        break
-                else:
-                    possibilities.append(index)
-            expansion_possibility = random.choice(possibilities)
+
+
+
+
+    def recursive_individual_creation_grow(self, genome, symbol, current_depth):
+        possibilities = [*range(0, self.count_number_of_options_in_production()[symbol], 1)]
+        non_recursive_possibilities = []
+        for index, option in enumerate(self.grammar[symbol]):
+            for s in option:
+                #if the production calls itself (recursive) then remove from possible selection
+                if s[0] == symbol:
+                    break
+            else:
+                non_recursive_possibilities.append(index)
+
+        recursive_possibilities = [x for x in possibilities if x not in non_recursive_possibilities]
+
+        if current_depth > self.max_init_depth or current_depth == 0:
+            expansion_possibility = random.choice(non_recursive_possibilities)
+        elif current_depth < self.min_init_depth and recursive_possibilities:
+            expansion_possibility = random.choice(recursive_possibilities)
         else:
             expansion_possibility = random.randint(0, self.count_number_of_options_in_production()[symbol] - 1)
 
@@ -127,8 +139,111 @@ class Grammar:
         depths = [current_depth]
         for sym in expansion_symbols:
             if sym[1] != self.T:
-                depths.append(self.recursive_individual_creation(genome, sym[0], current_depth + 1))
+                depths.append(self.recursive_individual_creation_grow(genome, sym[0], current_depth + 1))
         return max(depths)
+
+
+    def recursive_individual_creation_full(self, genome, symbol, current_depth):
+        possibilities = [*range(0, self.count_number_of_options_in_production()[symbol], 1)]
+        non_recursive_possibilities = []
+        for index, option in enumerate(self.grammar[symbol]):
+            #print(self.grammar[symbol])
+            for s in option:
+                #if the production calls itself (recursive) then remove from possible selection
+                if s[0] == symbol:
+                    break
+            else:
+                non_recursive_possibilities.append(index)
+
+        recursive_possibilities = [x for x in possibilities if x not in non_recursive_possibilities]
+
+        if current_depth > self.max_init_depth:
+            expansion_possibility = random.choice(non_recursive_possibilities)
+        else:
+            if recursive_possibilities:
+                expansion_possibility = random.choice(recursive_possibilities)
+            else:
+                #start symbol only
+                expansion_possibility = 0
+
+
+        genome[self.get_non_terminals().index(symbol)].append(expansion_possibility)
+        expansion_symbols = self.grammar[symbol][expansion_possibility]
+        depths = [current_depth]
+        for sym in expansion_symbols:
+            if sym[1] != self.T:
+                depths.append(self.recursive_individual_creation_full(genome, sym[0], current_depth + 1))
+        return max(depths)
+
+
+
+    def recursive_individual_creation_ptc2(self, genome, symbol, current_depth, expansions):
+        #start of the creation, decide on number of expansions
+        if current_depth == 0:
+            expansions = random.randint(self.min_init_depth, self.max_init_depth)
+            #print("Total Expansions")
+            #print(expansions)
+
+        possibilities = [*range(0, self.count_number_of_options_in_production()[symbol], 1)]
+        non_recursive_possibilities = []
+        for index, option in enumerate(self.grammar[symbol]):
+            for s in option:
+                #if the production calls itself (recursive) then remove from possible selection
+                if s[0] == symbol:
+                    break
+            else:
+                non_recursive_possibilities.append(index)
+
+        recursive_possibilities = [x for x in possibilities if x not in non_recursive_possibilities]
+
+        if current_depth == 0:
+            #start symbol
+            expansion_possibility = 0
+        elif expansions < 1:
+            #if no more expansions available then pick non-recursive
+            expansion_possibility = random.choice(non_recursive_possibilities)
+        elif not recursive_possibilities:
+            #if every option is terminal symbol
+            expansion_possibility = random.choice(non_recursive_possibilities)
+        else:
+            expansion_possibility = random.choice(recursive_possibilities)
+
+
+        genome[self.get_non_terminals().index(symbol)].append(expansion_possibility)
+        expansion_symbols = self.grammar[symbol][expansion_possibility]
+        depths = [current_depth]
+        #count number of recursive symbols
+        countsyms = Counter(expansion_symbols)
+        #print(countsyms)
+        num_of_rec_syms = countsyms[(symbol, 'NT')]
+
+
+        # split expansions for each branch
+        if num_of_rec_syms == 2:
+            left_expansion = random.randint(0, expansions)
+            right_expansion = expansions - left_expansion
+
+        for sym in expansion_symbols:
+            #if only once branch, all expansions go to that
+            if num_of_rec_syms < 2:
+                if sym[1] != self.T:
+                    #print("Center Expansion")
+                    depths.append(self.recursive_individual_creation_ptc2(genome, sym[0], current_depth + 1, expansions - 1))
+            else:
+                # the left branch (first occurence of symbol)
+                if sym[1] != self.T and expansion_symbols.index(sym) < 1:
+                    #print("Left Expansion")
+                    #print(left_expansion)
+                    depths.append(self.recursive_individual_creation_ptc2(genome, sym[0], current_depth + 1, left_expansion - 1))
+                elif sym[1] != self.T:
+                    #print("Right Expansion")
+                    #print(right_expansion)
+                    depths.append(self.recursive_individual_creation_ptc2(genome, sym[0], current_depth + 1, right_expansion - 1))
+
+        return max(depths)
+
+
+
 
     def mapping(self, mapping_rules, positions_to_map=None, needs_python_filter=False):
         if positions_to_map is None:
@@ -149,7 +264,7 @@ class Grammar:
             choices = self.grammar[current_sym[0]]
             size_of_gene = self.count_number_of_options_in_production()
             if positions_to_map[current_sym_pos] >= len(mapping_rules[current_sym_pos]):
-                if current_depth > self.max_depth:
+                if current_depth > self.max_init_depth:
                     # print "True"
                     possibilities = []
                     for index, option in enumerate(self.grammar[current_sym[0]]):
@@ -199,6 +314,8 @@ class Grammar:
         return txt
 
     def get_start_rule(self):
+        #print("Start Rule")
+        #print(self.start_rule)
         return self.start_rule
 
     def __str__(self):
@@ -227,7 +344,9 @@ get_non_terminals = _inst.get_non_terminals
 count_number_of_options_in_production = _inst.count_number_of_options_in_production
 compute_non_recursive_options = _inst.compute_non_recursive_options
 list_non_recursive_productions = _inst.list_non_recursive_productions
-recursive_individual_creation = _inst.recursive_individual_creation
+recursive_individual_creation_grow = _inst.recursive_individual_creation_grow
+recursive_individual_creation_full = _inst.recursive_individual_creation_full
+recursive_individual_creation_ptc2 = _inst.recursive_individual_creation_ptc2
 mapping = _inst.mapping
 start_rule = _inst.get_start_rule
 set_max_tree_depth = _inst.set_max_tree_depth
@@ -241,4 +360,3 @@ if __name__ == "__main__":
     genome = [[0], [0, 3, 3], [0], [], [1, 1]]
     mapping_numbers = [0] * len(genome)
     print(g.mapping(genome, mapping_numbers, needs_python_filter=True))
-

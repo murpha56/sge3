@@ -14,23 +14,68 @@ from sge.parameters import (
 )
 
 
-def generate_random_individual():
+def generate_random_individual_grow():
+    #creates empty template
     genotype = [[] for key in grammar.get_non_terminals()]
-    tree_depth = grammar.recursive_individual_creation(genotype, grammar.start_rule()[0], 0)
+    #finds tree depth and populates template with codons
+    tree_depth = grammar.recursive_individual_creation_grow(genotype, grammar.start_rule()[0], 0)
+    return {'genotype': genotype, 'fitness': None, 'tree_depth' : tree_depth}
+
+def generate_random_individual_full():
+    #creates empty template
+    genotype = [[] for key in grammar.get_non_terminals()]
+    #finds tree depth and populates template with codons
+    tree_depth = grammar.recursive_individual_creation_full(genotype, grammar.start_rule()[0], 0)
+    return {'genotype': genotype, 'fitness': None, 'tree_depth' : tree_depth}
+
+def generate_random_individual_ptc2():
+    #creates empty template
+    genotype = [[] for key in grammar.get_non_terminals()]
+    tree_depth = grammar.recursive_individual_creation_ptc2(genotype, grammar.start_rule()[0], 0, 0)
     return {'genotype': genotype, 'fitness': None, 'tree_depth' : tree_depth}
 
 
 def make_initial_population():
-    for i in range(params['POPSIZE']):
-        yield generate_random_individual()
+    if params['INITIALISATION'] == "grow":
+        for i in range(params['POPSIZE']):
+            yield generate_random_individual_grow()
+    elif params['INITIALISATION'] == "full":
+        for i in range(params['POPSIZE']):
+            yield generate_random_individual_full()
+    elif params['INITIALISATION'] == "sensible":
+        for i in range(params['POPSIZE']):
+            if i < (params['POPSIZE']/2):
+                yield generate_random_individual_grow()
+            else:
+                yield generate_random_individual_full()
+    elif params['INITIALISATION'] == "ptc2":
+        for i in range(params['POPSIZE']):
+            yield generate_random_individual_ptc2()
+    elif params['INITIALISATION'] == "test":
+        for i in range(params['POPSIZE']):
+            yield add_seeded_individual()
+    else:
+        print("Error, selection method invalid")
+
+
+def add_seeded_individual():
+    genotype = [[0],[0, 1, 2, 3, 4, 5, 6, 7, 8, 9], [0], [0], [0], [0], [0], [0], [0], [0]]
+    tree_depth = 9
+    return {'genotype': genotype, 'fitness': None, 'tree_depth' : tree_depth}
+
 
 
 def evaluate(ind, eval_func):
     mapping_values = [0 for i in ind['genotype']]
+    #print(mapping_values)
+    #print(ind['genotype'])
     phen, tree_depth = grammar.mapping(ind['genotype'], mapping_values)
-    quality, other_info = eval_func.evaluate(phen)
+    #print(eval(phen))
+    #print(tree_depth)
+    quality, test_error, other_info = eval_func.evaluate(phen)
     ind['phenotype'] = phen
     ind['fitness'] = quality
+    ind['test_fitness'] = test_error
     ind['other_info'] = other_info
     ind['mapping_values'] = mapping_values
     ind['tree_depth'] = tree_depth

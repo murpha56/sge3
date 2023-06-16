@@ -1,0 +1,20 @@
+POPSIZE: 20
+GENERATIONS: 0
+ELITISM: 0                    # number of individuals that survive
+PROB_CROSSOVER: 0.0
+PROB_MUTATION: 1
+MUTATION_STRATEGY: 'Regular'
+CROSSOVER_STRATEGY: 'Regular'
+PROB_CONTEXT: 0.0
+SELECTION_STRATEGY: 'Tournamnet'
+TSIZE: 2
+GRAMMAR: "grammars/Aus_Fuzzy_grammar.bnf"
+EXPERIMENT_NAME: "dumps/Aus_Fuzzy"
+RUN: 1
+INCLUDE_GENOTYPE: FALSE
+SAVE_STEP: 10
+VERBOSE: True
+MIN_TREE_DEPTH: 2
+MAX_TREE_DEPTH: 7
+ERROR_METRIC: "FMS"
+PROBLEM: "AusCredit"

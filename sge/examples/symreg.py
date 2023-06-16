@@ -1,7 +1,9 @@
 import random
-from numpy import cos, sin
+from sge.parameters import params
 from sge.utilities.protected_math import _log_, _div_, _exp_, _inv_, _sqrt_, protdiv
-
+from numpy import cos, sin, corrcoef, isnan
+from sklearn.model_selection import train_test_split
+from scipy import stats
 
 def drange(start, stop, step):
     r = start
@@ -11,7 +13,7 @@ def drange(start, stop, step):
 
 
 class SymbolicRegression():
-    def __init__(self, function="quarticpolynomial", has_test_set=False, invalid_fitness=9999999):
+    def __init__(self, run=0, function="keijzer6", has_test_set=True, invalid_fitness=9999999):
         self.__train_set = []
         self.__test_set = None
         self.__number_of_variables = 1
@@ -140,10 +142,11 @@ class SymbolicRegression():
             test_error = self.get_error(individual, self.__test_set)
             test_error = _sqrt_( test_error / float(self.__RRSE_test_denominator))
 
-        return error, {'generation': 0, "evals": 1, "test_error": test_error}
+        return error, test_error, {'generation': 0, "evals": 1, "test_error": test_error}
 
 
 if __name__ == "__main__":
     import sge
-    eval_func = SymbolicRegression()
-    sge.evolutionary_algorithm(evaluation_function=eval_func, parameters_file="parameters/standard.yml")
+    sge.setup("parameters/keijzer6.yml")
+    eval_func = SymbolicRegression(params['RUN'])
+    sge.evolutionary_algorithm(evaluation_function=eval_func)

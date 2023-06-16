@@ -1,5 +1,4 @@
-#core
-<start> ::= <code>
-<code> ::= <line>|<code>\n<line>
-<line> ::= if ant.sense_food():{:<line>:}else:{:<line>:}|<op>
+<start> ::= <exp>
+<exp> ::= <line>|<exp>\n<line>
+<line> ::= if ant.sense_food():{:<op>:}else:{:<op>:}
 <op> ::= ant.turn_left()|ant.turn_right()|ant.move_forward()

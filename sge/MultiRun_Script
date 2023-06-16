@@ -1,12 +1,17 @@
 #!/bin/bash
 
 
-nor=50		# number of runs
+nor=2		# number of runs
 
 
 # Uncomment/modify appropriate lines in the code below as per your requirement
 for (( run=1 ; run<nor+1 ; run=${run}+1 )) do
-		nohup python3 -m progsys.progsys --run $run --parameters parameters/fpt_standard.yml  &
+	if (($run < 31))
+	then
+		nohup python3 -m examples.fuzzy_pattern_tree --parameters parameters/fpt_standard_Heart.yml --run $run &
+	else
+		nohup python3 -m examples.pagie1 --parameters parameters/pagie1.yml --run $run --initialisation "ptc2" --min_tree_depth 2 --max_tree_depth 30 &
+
 	fi
 
 done
