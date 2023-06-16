@@ -6,7 +6,7 @@ from datetime import datetime
 from tqdm import tqdm
 from sge.operators.recombination import crossover, context_aware_crossover, single_point_crossover
 from sge.operators.mutation import mutate, shrinkmutate
-from sge.operators.selection import tournament, doubletournamentsmall, doubletournamentlarge, samesizeind, roulette_wheel_selection
+from sge.operators.selection import tournament, doubletournamentsmall, doubletournamentlarge, samesizeind, roulette_wheel_selection, lexicase_selection
 from sge.parameters import (
     params,
     set_parameters,
@@ -73,6 +73,9 @@ def evaluate(ind, eval_func):
     #print(eval(phen))
     #print(tree_depth)
     quality, test_error, other_info = eval_func.evaluate(phen)
+    #use with lexicase
+    #quality, caseQuality, other_info = eval_func.evaluate(phen, "training")
+    #test_quality, test_caseQuality, other_test_info = eval_func.evaluate(phen, "test")
     ind['phenotype'] = phen
     ind['fitness'] = quality
     ind['test_fitness'] = test_error
@@ -109,13 +112,16 @@ def evolutionary_algorithm(evaluation_function=None):
         new_population = population[:params['ELITISM']]
         while len(new_population) < params['POPSIZE']:
             if random.random() < params['PROB_CROSSOVER']:
-                if params['SELECTION_STRATEGY'] == "RouletteWheel":
+                if params['SELECTION_STRATEGY'] == "Lexicase":
+                    p1 = lexicase_selection(population)
+                    p2 = lexicase_selection(population)
+                elif params['SELECTION_STRATEGY'] == "RouletteWheel":
                     p1 = roulette_wheel_selection(population)
                     p2 = roulette_wheel_selection(population)
-                elif params['SELECTION_STRATEGY'] == "SameSizeTournamnet":
+                elif params['SELECTION_STRATEGY'] == "SameSizeTournament":
                     p1 = tournament(population, params['TSIZE'])
                     p2 = samesizeind(population, params['TSIZE'], p1)
-                elif params['SELECTION_STRATEGY'] == "DoubleTournamnet":
+                elif params['SELECTION_STRATEGY'] == "DoubleTournament":
                     if random.random() < params['PROB_CROSSOVER']/2:
                         p1 = doubletournamentsmall(population, params['TSIZE'])
                         p2 = doubletournamentsmall(population, params['TSIZE'])
