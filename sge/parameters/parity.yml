@@ -1,5 +1,5 @@
-POPSIZE: 500
-GENERATIONS: 50
+POPSIZE: 10
+GENERATIONS: 2
 ELITISM: 5       # number of individuals that survive
 INITIALISATION: "grow"
 PROB_CROSSOVER: 0.9

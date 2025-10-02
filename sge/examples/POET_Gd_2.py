@@ -1,0 +1,147 @@
+import random
+from sge.parameters import params
+from sge.utilities.protected_math import _log_, _div_, _exp_, _inv_, _sqrt_, protdiv, inv
+from numpy import cos, sin, corrcoef, isnan
+from sklearn.model_selection import train_test_split
+from scipy import stats
+from math import log, exp, sqrt
+
+def drange(start, stop, step):
+    r = start
+    while r < stop:
+        yield r
+        r += step
+
+class POET_Gd_2():
+    def __init__(self, run=0, has_test_set=True, invalid_fitness=9999999):
+        self.__train_set = []
+        self.__test_set1 = []
+        self.__test_set2 = []
+        self.__invalid_fitness = invalid_fitness
+        self.run = run
+        self.has_test_set = has_test_set
+        self.read_dataset()
+#        self.calculate_rrse_denominators()
+
+
+    def read_dataset(self):
+        dataset = []
+        test1 = []
+        test2 = []
+
+        with open('resources/SymRegPOET/Gd_Epoch2_Train', 'r') as dataset_file:
+            for line in dataset_file:
+                dataset.append([float(value.strip(" ")) for value in line.split(" ") if value != ""])
+        with open('resources/SymRegPOET/Gd_Epoch2_Test_Motif', 'r') as test_file1:
+            for line in test_file1:
+                test1.append([float(value.strip(" ")) for value in line.split(" ") if value != ""])
+        with open('resources/SymRegPOET/Gd_Epoch2_Test_Regex', 'r') as test_file2:
+            for line in test_file2:
+                test2.append([float(value.strip(" ")) for value in line.split(" ") if value != ""])
+
+        self.__train_set = dataset
+        self.__test_set1 = test1
+        self.__test_set2 = test2
+
+#        print(dataset[:1])
+
+
+#    def calculate_rrse_denominators(self):
+#        self.__RRSE_train_denominator = 0
+#        self.__RRSE_test_denominator = 0
+#        train_outputs = [entry[-1] for entry in self.__train_set]
+#        train_output_mean = float(sum(train_outputs)) / len(train_outputs)
+#        self.__RRSE_train_denominator = sum([(i - train_output_mean)**2 for i in train_outputs])
+#        if self.__test_set:
+#            test_outputs = [entry[-1] for entry in self.__test_set]
+#            test_output_mean = float(sum(test_outputs)) / len(test_outputs)
+#            self.__RRSE_test_denominator = sum([(i - test_output_mean)**2 for i in test_outputs])
+
+
+    def get_error(self, individual, dataset):
+        pred_error = 0
+        for case in dataset:
+            target = case[-1]
+            try:
+                output = eval(individual, globals(), {"x": case[:-1]})
+                pred_error += (target - output)**2
+            except (SyntaxError, ValueError, OverflowError, MemoryError, FloatingPointError, ZeroDivisionError, RuntimeWarning):
+                return self.__invalid_fitness
+        return pred_error
+
+    def get_test_error(self, individual, dataset, slope, intercept):
+        pred_error = 0
+        for case in dataset:
+            target = case[-1]
+            try:
+                output = eval(individual, globals(), {"x": case[:-1]})
+                scaled_output = intercept + slope*output
+                pred_error += (target - scaled_output)**2
+            except (SyntaxError, ValueError, OverflowError, MemoryError, FloatingPointError, ZeroDivisionError, RuntimeWarning):
+                return self.__invalid_fitness
+        return pred_error
+
+    def get_corr_error(self, individual, dataset):
+        corr_error = 0
+        slope = 0
+        intercept = 0
+        outputs = []
+        targets = []
+        for case in dataset:
+            target = case[-1]
+            try:
+                output = eval(individual, globals(), {"x": case[:-1]})
+                outputs.append(output)
+                targets.append(target)
+            except (SyntaxError, ValueError, OverflowError, MemoryError, FloatingPointError, ZeroDivisionError, RuntimeWarning):
+                return self.__invalid_fitness, 0, 0
+
+        corr_matrix = corrcoef(targets, outputs)
+        try:
+            slope, intercept, r_value, p_value, std_err = stats.linregress(outputs, targets)
+            corr_error = 1 - (corr_matrix[0,1]**2)
+            if isnan(corr_error) or corr_error == 0:
+                corr_error = 1
+        except (SyntaxError, ValueError, OverflowError, MemoryError, FloatingPointError, ZeroDivisionError, RuntimeWarning):
+            return self.__invalid_fitness, 0, 0
+
+        return corr_error, slope, intercept
+
+
+    def evaluate(self, individual):
+        error = 0.0
+        test_error = 0.0
+        if individual is None:
+            return None
+
+        if params['ERROR_METRIC'] == "Correleation":
+            error, slope, intercept = self.get_corr_error(individual, self.__train_set)
+        else:
+            error = self.get_error(individual, self.__train_set)
+            error = _sqrt_( error /self.__RRSE_train_denominator)
+
+        if error is None:
+            error = self.__invalid_fitness
+        if isnan(error):
+            error = self.__invalid_fitness
+
+
+        if self.__test_set1 is not None:
+            test_error_1 = 0
+            test_error_2 = 0
+            if params['ERROR_METRIC'] == "Correleation":
+                test_error_1 = self.get_test_error(individual, self.__test_set1, slope, intercept)
+                test_error_2 = self.get_test_error(individual, self.__test_set2, slope, intercept)
+            else:
+                test_error = self.get_error(individual, self.__test_set)
+
+            #test_error = _sqrt_( test_error / float(self.__RRSE_test_denominator))
+
+        return error, test_error_1, test_error_2, {'generation': 0, "evals": 1, "test_error": test_error}
+
+
+if __name__ == "__main__":
+    import sge
+    sge.setup("parameters/POET_Gd.yml")
+    eval_func = POET_Gd_2(params['RUN'])
+    sge.evolutionary_algorithm(evaluation_function=eval_func)

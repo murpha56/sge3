@@ -1,9 +1,10 @@
 import random
 from sge.parameters import params
-from sge.utilities.protected_math import _log_, _div_, _exp_, _inv_, _sqrt_, protdiv
+from sge.utilities.protected_math import _log_, _div_, _exp_, _inv_, _sqrt_, protdiv, inv
 from numpy import cos, sin, corrcoef, isnan
 from sklearn.model_selection import train_test_split
 from scipy import stats
+from math import log, exp, sqrt
 
 def drange(start, stop, step):
     r = start
@@ -14,7 +15,7 @@ def drange(start, stop, step):
 class Pagie1():
     def __init__(self, run=0, has_test_set=True, invalid_fitness=9999999):
         self.__train_set = []
-        self.__test_set = None
+        self.__test_set = []
         self.__invalid_fitness = invalid_fitness
         self.run = run
         self.has_test_set = has_test_set
@@ -72,7 +73,7 @@ class Pagie1():
             try:
                 output = eval(individual, globals(), {"x": case[:-1]})
                 pred_error += (target - output)**2
-            except (SyntaxError, ValueError, OverflowError, MemoryError, FloatingPointError):
+            except (SyntaxError, ValueError, OverflowError, MemoryError, FloatingPointError, ZeroDivisionError, RuntimeWarning):
                 return self.__invalid_fitness
         return pred_error
 
@@ -84,7 +85,7 @@ class Pagie1():
                 output = eval(individual, globals(), {"x": case[:-1]})
                 scaled_output = intercept + slope*output
                 pred_error += (target - scaled_output)**2
-            except (SyntaxError, ValueError, OverflowError, MemoryError, FloatingPointError):
+            except (SyntaxError, ValueError, OverflowError, MemoryError, FloatingPointError, ZeroDivisionError, RuntimeWarning):
                 return self.__invalid_fitness
         return pred_error
 
@@ -100,18 +101,17 @@ class Pagie1():
                 output = eval(individual, globals(), {"x": case[:-1]})
                 outputs.append(output)
                 targets.append(target)
-            except (SyntaxError, ValueError, OverflowError, MemoryError, FloatingPointError):
+            except (SyntaxError, ValueError, OverflowError, MemoryError, FloatingPointError, ZeroDivisionError, RuntimeWarning):
                 return self.__invalid_fitness, 0, 0
 
         corr_matrix = corrcoef(targets, outputs)
         try:
+            slope, intercept, r_value, p_value, std_err = stats.linregress(outputs, targets)
             corr_error = 1 - (corr_matrix[0,1]**2)
             if isnan(corr_error):
                 corr_error = 1
-        except (SyntaxError, ValueError, OverflowError, MemoryError, FloatingPointError):
+        except (SyntaxError, ValueError, OverflowError, MemoryError, FloatingPointError, ZeroDivisionError, RuntimeWarning):
             return self.__invalid_fitness, 0, 0
-
-        slope, intercept, r_value, p_value, std_err = stats.linregress(targets, outputs)
 
         return corr_error, slope, intercept
 
@@ -131,6 +131,9 @@ class Pagie1():
         if error is None:
             error = self.__invalid_fitness
 
+        if isnan(error):
+            error = self.__invalid_fitness
+
 
         if self.__test_set is not None:
             test_error = 0
@@ -140,6 +143,8 @@ class Pagie1():
                 test_error = self.get_error(individual, self.__test_set)
 
             #test_error = _sqrt_( test_error / float(self.__RRSE_test_denominator))
+
+
 
         return error, test_error, {'generation': 0, "evals": 1, "test_error": test_error}
 

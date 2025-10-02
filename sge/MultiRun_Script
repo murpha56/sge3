@@ -1,16 +1,28 @@
 #!/bin/bash
 
 
-nor=2		# number of runs
+nor=50		# number of runs
 
 
 # Uncomment/modify appropriate lines in the code below as per your requirement
 for (( run=1 ; run<nor+1 ; run=${run}+1 )) do
-	if (($run < 31))
+	if (($run < 51))
 	then
-		nohup python3 -m examples.fuzzy_pattern_tree --parameters parameters/fpt_standard_Heart.yml --run $run &
+		nohup python3 -m examples.POET_Gd --parameters parameters/POET_Gd.yml  --run $run --initialisation "ptc2" --min_tree_depth 2 --max_tree_depth 30 &
+	elif (($run < 101))
+	then
+		nohup python3 -m examples.POET_Gd_2_Reduced --parameters parameters/POET_Gd_2_Reduced.yml  --run $run --initialisation "ptc2" --min_tree_depth 2 --max_tree_depth 30 &
+	elif (($run < 91))
+	then
+		nohup python3 -m examples.POET_Gd_2_Reduced --parameters parameters/POET_Gd_2_Reduced.yml  --run $run --initialisation "ptc2" --min_tree_depth 2 --max_tree_depth 30 &
+	elif (($run < 121))
+	then
+		nohup python3 -m examples.keijzer9 --parameters parameters/keijzer9_test.yml --run $run --initialisation "ptc2" --min_tree_depth 2 --max_tree_depth 30 &
+	elif (($run < 151))
+	then
+		nohup python3 -m examples.ppb --parameters parameters/Ppb_NoProt.yml --run $run --initialisation "sensible" &
 	else
-		nohup python3 -m examples.pagie1 --parameters parameters/pagie1.yml --run $run --initialisation "ptc2" --min_tree_depth 2 --max_tree_depth 30 &
+		nohup python3 -m examples.ppb --parameters parameters/Ppb_NoProt.yml --run $run --initialisation "ptc2" --min_tree_depth 2 --max_tree_depth 30 &
 
 	fi
 

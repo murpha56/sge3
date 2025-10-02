@@ -15,6 +15,9 @@ def protdiv(x, y):
         return 1
     return x / y
 
+def aq(x, y):
+    return x / (sqrt(1+y^2))
+
 
 def _exp_(x):
     try:
@@ -27,6 +30,9 @@ def _inv_(x):
     if x == 0: return 1
     return 1.0 / x
 
+def inv(x):
+    #if x == 0: return 1
+    return 1.0 / x
 
 def _sqrt_(x):
     return sqrt(abs(x))

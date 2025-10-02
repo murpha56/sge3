@@ -62,6 +62,11 @@ class FuzzyPatternTree():
             with open('resources/Marketing/MarketingFinal', 'r') as dataset_file:
                 for line in dataset_file:
                     dataset.append([float(value.strip(" ")) for value in line.split(" ") if value != ""])
+        elif params['PROBLEM'] == "Zeeko":
+            with open('resources/Zeeko/CyberFinal', 'r') as dataset_file:
+                for line in dataset_file:
+                    dataset.append([float(value.strip(" ")) for value in line.split(" ") if value != ""])
+
         else:
             print("Not a problem, please pick a valid option")
 

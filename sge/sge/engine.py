@@ -1,5 +1,8 @@
 import random
 import sys
+import copy
+import itertools
+import numpy as np
 import sge.grammar as grammar
 import sge.logger as logger
 from datetime import datetime
@@ -12,6 +15,9 @@ from sge.parameters import (
     set_parameters,
     load_parameters
 )
+
+#hybrid optimisation
+from scipy import optimize
 
 
 def generate_random_individual_grow():
@@ -31,8 +37,8 @@ def generate_random_individual_full():
 def generate_random_individual_ptc2():
     #creates empty template
     genotype = [[] for key in grammar.get_non_terminals()]
-    tree_depth = grammar.recursive_individual_creation_ptc2(genotype, grammar.start_rule()[0], 0, 0)
-    return {'genotype': genotype, 'fitness': None, 'tree_depth' : tree_depth}
+    init_tree_depth  = grammar.recursive_individual_creation_ptc2(genotype, grammar.start_rule()[0], 0, 0)
+    return {'genotype': genotype, 'fitness': None, 'init_tree_depth' : init_tree_depth}
 
 
 def make_initial_population():
@@ -69,19 +75,96 @@ def evaluate(ind, eval_func):
     mapping_values = [0 for i in ind['genotype']]
     #print(mapping_values)
     #print(ind['genotype'])
+
+    #only return expansions when using PTC2
     phen, tree_depth = grammar.mapping(ind['genotype'], mapping_values)
     #print(eval(phen))
     #print(tree_depth)
-    quality, test_error, other_info = eval_func.evaluate(phen)
+    quality, test_error_1, test_error_2, other_info = eval_func.evaluate(phen)
     #use with lexicase
     #quality, caseQuality, other_info = eval_func.evaluate(phen, "training")
     #test_quality, test_caseQuality, other_test_info = eval_func.evaluate(phen, "test")
+
+
+# For POET
+#    print("Mapped Ind...")
+#    print(phen)
+#    print(len(phen))
+
+#    phensplit = phen.split()
+#    print(len(phensplit))
+    #print(f'List of Words ={phen.split()}')
+#    print(phensplit[0])
+#    print(float(phensplit[1]))
+#    num_rules = int(len(phensplit)/2)
+#    for i in range(num_rules):
+#        myrule = phensplit[i*2]
+#        print(myrule)
+#        print("A" in myrule)
+
     ind['phenotype'] = phen
     ind['fitness'] = quality
-    ind['test_fitness'] = test_error
+    ind['test_fitness1'] = test_error_1
+    ind['test_fitness2'] = test_error_2
     ind['other_info'] = other_info
     ind['mapping_values'] = mapping_values
     ind['tree_depth'] = tree_depth
+
+
+
+def hybrid_fit(ind, evaluation_function):
+    hybrid_pool = []
+    evaluate(ind,evaluation_function)
+    hybrid_pool.append(ind)
+
+
+    #for symbolic regression grammar
+    chose_prod = 2 + random.randint(0,2)
+    a = 4
+    b = 5
+    #this will change with each problem
+    c = 76
+
+    num_of_prods = len(ind['genotype'][chose_prod])
+
+    if chose_prod == 2:
+        terms = a
+        num_perm = pow(terms,num_of_prods)
+    elif chose_prod == 3:
+        terms = b
+        num_perm = pow(terms,num_of_prods)
+    elif chose_prod == 4:
+        terms = c
+        num_perm = pow(terms,num_of_prods)
+
+    if num_perm < 100:
+        for i in range(num_perm):
+            res = [ele for ele in itertools.product(range(0, terms), repeat = num_of_prods)]
+
+            permut_ind = copy.deepcopy(ind)
+            permut_ind['genotype'][chose_prod] = list(res[i])
+
+            evaluate(permut_ind,evaluation_function)
+            hybrid_pool.append(permut_ind)
+
+    else:
+        for i in range(100):
+            res = list(np.random.randint(low = terms, size=num_of_prods))
+
+            permut_ind = copy.deepcopy(ind)
+            permut_ind['genotype'][chose_prod] = res
+
+            evaluate(permut_ind,evaluation_function)
+            hybrid_pool.append(permut_ind)
+
+
+    hybrid_pool.sort(key=lambda i: i['fitness'])
+
+    for a in range(min(10, num_perm)):
+        if (hybrid_pool[0]['fitness'] == hybrid_pool[a]['fitness']):
+            tie_breaker = a
+
+    return hybrid_pool[random.randint(0,a)]
 
 
 def setup(parameters_file_path = None):
@@ -102,6 +185,9 @@ def evolutionary_algorithm(evaluation_function=None):
     setup()
     population = list(make_initial_population())
     it = 0
+    #hybrid optimisation
+#    for i in population:
+#        hybrid_fit(i, evaluation_function)
     while it <= params['GENERATIONS']:
         for i in population:
             if i['fitness'] is None:

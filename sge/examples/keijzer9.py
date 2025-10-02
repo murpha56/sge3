@@ -1,9 +1,10 @@
 import random
 from sge.parameters import params
-from sge.utilities.protected_math import _log_, _div_, _exp_, _inv_, _sqrt_, protdiv
+from sge.utilities.protected_math import _log_, _div_, _exp_, _inv_, _sqrt_, protdiv, inv
 from numpy import cos, sin, corrcoef, isnan
 from sklearn.model_selection import train_test_split
 from scipy import stats
+from math import log, exp, sqrt
 
 def drange(start, stop, step):
     r = start
@@ -20,7 +21,6 @@ class Keijzer9():
         self.has_test_set = has_test_set
         self.read_dataset()
         self.calculate_rrse_denominators()
-
 
     def read_dataset(self):
 
@@ -61,19 +61,19 @@ class Keijzer9():
             try:
                 output = eval(individual, globals(), {"x": case[:-1]})
                 pred_error += (target - output)**2
-            except (SyntaxError, ValueError, OverflowError, MemoryError, FloatingPointError):
+            except (SyntaxError, ValueError, OverflowError, MemoryError, FloatingPointError, ZeroDivisionError):
                 return self.__invalid_fitness
         return pred_error
 
     def get_test_error(self, individual, dataset, slope, intercept):
-        #pred_error = 0
+        pred_error = 0
         for case in dataset:
             target = case[-1]
             try:
                 output = eval(individual, globals(), {"x": case[:-1]})
-                #scaled_output = intercept + slope*output
+                scaled_output = intercept + slope*output
                 pred_error += (target - output)**2
-            except (SyntaxError, ValueError, OverflowError, MemoryError, FloatingPointError):
+            except (SyntaxError, ValueError, OverflowError, MemoryError, FloatingPointError, ZeroDivisionError):
                 return self.__invalid_fitness
         return pred_error
 
@@ -89,18 +89,19 @@ class Keijzer9():
                 output = eval(individual, globals(), {"x": case[:-1]})
                 outputs.append(output)
                 targets.append(target)
-            except (SyntaxError, ValueError, OverflowError, MemoryError, FloatingPointError):
+            except (SyntaxError, ValueError, OverflowError, MemoryError, FloatingPointError, ZeroDivisionError):
                 return self.__invalid_fitness, 0, 0
 
         corr_matrix = corrcoef(targets, outputs)
         try:
+            slope, intercept, r_value, p_value, std_err = stats.linregress(targets, outputs)
             corr_error = 1 - (corr_matrix[0,1]**2)
             if isnan(corr_error):
                 corr_error = 1
-        except (SyntaxError, ValueError, OverflowError, MemoryError, FloatingPointError):
+        except (SyntaxError, ValueError, OverflowError, MemoryError, FloatingPointError, ZeroDivisionError):
             return self.__invalid_fitness, 0, 0
 
-        slope, intercept, r_value, p_value, std_err = stats.linregress(targets, outputs)
+
 
         return corr_error, slope, intercept
 
@@ -111,23 +112,24 @@ class Keijzer9():
         if individual is None:
             return None
 
-        #if params['ERROR_METRIC'] == "Correleation":
-        #    error, slope, intercept = self.get_corr_error(individual, self.__train_set)
-        #else:
-        error = self.get_error(individual, self.__train_set)
-        error = _sqrt_( error /self.__RRSE_train_denominator)
+        if params['ERROR_METRIC'] == "Correleation":
+            error, slope, intercept = self.get_corr_error(individual, self.__train_set)
+        else:
+            error = self.get_error(individual, self.__train_set)
+            error = _sqrt_( error /self.__RRSE_train_denominator)
 
         if error is None:
             error = self.__invalid_fitness
-
+        if isnan(error):
+            error = self.__invalid_fitness
 
         if self.__test_set is not None:
             test_error = 0
-            #if params['ERROR_METRIC'] == "Correleation":
-            #    test_error = self.get_test_error(individual, self.__test_set, slope, intercept)
-            #else:
-            test_error = self.get_error(individual, self.__test_set)
-            test_error = _sqrt_( test_error /self.__RRSE_test_denominator)
+            if params['ERROR_METRIC'] == "Correleation":
+                test_error = self.get_test_error(individual, self.__test_set, slope, intercept)
+            else:
+                test_error = self.get_error(individual, self.__test_set)
+                test_error = _sqrt_( test_error /self.__RRSE_test_denominator)
 
             #test_error = _sqrt_( test_error / float(self.__RRSE_test_denominator))
 

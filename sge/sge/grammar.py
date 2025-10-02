@@ -128,6 +128,8 @@ class Grammar:
         recursive_possibilities = [x for x in possibilities if x not in non_recursive_possibilities]
 
         if current_depth > self.max_init_depth or current_depth == 0:
+            #print("hit max depth")
+            #print(current_depth)
             expansion_possibility = random.choice(non_recursive_possibilities)
         elif current_depth < self.min_init_depth and recursive_possibilities:
             expansion_possibility = random.choice(recursive_possibilities)
@@ -212,6 +214,7 @@ class Grammar:
         genome[self.get_non_terminals().index(symbol)].append(expansion_possibility)
         expansion_symbols = self.grammar[symbol][expansion_possibility]
         depths = [current_depth]
+        #total_expans = [expansions]
         #count number of recursive symbols
         countsyms = Counter(expansion_symbols)
         #print(countsyms)
